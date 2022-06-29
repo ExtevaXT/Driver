@@ -11,6 +11,7 @@ public class Driver : MonoBehaviour
 
     public Transform mainCamera;
     public GameObject driftEffect;
+    public Transform driftMount;
 
     int steerLeft;
     int steerRight;
@@ -35,11 +36,11 @@ public class Driver : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        
+
     }
     void Update()
     {
-        mainCamera.position = new Vector3 (transform.position.x, mainCamera.position.y, transform.position.z);
+        mainCamera.position = new Vector3(transform.position.x, mainCamera.position.y, transform.position.z);
         //Input holders
         //Left steer Q
         if (Input.GetKeyDown(KeyCode.Q) && pressedLeft == false)
@@ -72,7 +73,11 @@ public class Driver : MonoBehaviour
         {
             //If pressed D with some acceleration threshold apply drift
             //Also must be left or right steers
-            if (acceleration > max / 2 && !onDrift) StartCoroutine(Drift());
+            if (acceleration > max / 2 && !onDrift)
+            {
+                StartCoroutine(Drift());
+                driftEffect.GetComponent<ParticleSystem>().Play();
+            }
 
             pressedDown = true;
             //Only one can be pressed
@@ -131,9 +136,9 @@ public class Driver : MonoBehaviour
 
 
         //Move forward
-        if (acceleration > 0 && !onDrift && !collided) transform.Translate(Vector3.left * (acceleration * moveSpeed) * Time.deltaTime);
+        if (acceleration > 0 && !onDrift && !collided) transform.Translate(Vector3.forward * (acceleration * moveSpeed) * Time.deltaTime);
         //Move backwards
-        if (deceleration > 0 && !onDrift && !collided) transform.Translate(Vector3.right * (deceleration * moveSpeed) * Time.deltaTime);
+        if (deceleration > 0 && !onDrift && !collided) transform.Translate(Vector3.back * (deceleration * moveSpeed) * Time.deltaTime);
         //Rotate left
         if (steerLeft > 0 && !onDrift) transform.Rotate(Vector3.down * steerLeft * Time.deltaTime);
         //Rotate right
@@ -144,16 +149,16 @@ public class Driver : MonoBehaviour
         if (onDrift)
         {
             //Now it only increase speed and slows rotation
-            transform.Translate((Vector3.left * (acceleration * moveSpeed * 1.25f)) * Time.deltaTime);
+            transform.Translate((Vector3.forward * (acceleration * moveSpeed * 1f)) * Time.deltaTime);
             //Make steer movement
-            transform.Translate(Vector3.forward * (steerLeft - steerRight) * moveSpeed * Time.deltaTime);
+            transform.Translate(Vector3.right * (steerLeft - steerRight) * moveSpeed * 1.5f * Time.deltaTime);
             transform.Rotate(Vector3.down * (steerLeft - steerRight) * 0.5f * Time.deltaTime);
         }
 
 
 
         //Show stacks
-        mainText.text = steerLeft.ToString() + " "  + acceleration.ToString() + " " + steerRight.ToString()  + " " + deceleration.ToString();
+        mainText.text = steerLeft.ToString() + " " + acceleration.ToString() + " " + steerRight.ToString() + " " + deceleration.ToString();
     }
     public IEnumerator Drift()
     {
@@ -161,16 +166,18 @@ public class Driver : MonoBehaviour
         Debug.Log("Drift");
         onDrift = true;
 
-        GameObject go = Instantiate(driftEffect, transform.position, transform.rotation * Quaternion.Euler(0, 90, 0));
-        go.transform.parent = transform;
+        //GameObject go = Instantiate(driftEffect, driftMount.position, driftMount.rotation);
+        //go.transform.parent = driftMount;
+        //driftEffect.GetComponent<ParticleSystem>().Play();
 
-        yield return new WaitForSeconds(2f);
-        onDrift =false;
-        Destroy(go);
+        yield return new WaitForSeconds(2.5f);
+        onDrift = false;
+        driftEffect.GetComponent<ParticleSystem>().Stop();
+        //Destroy(go);
 
 
         //StartCoroutine(moveObject(transform.position, transform.position + Vector3.left * (acceleration * moveSpeed), transform.rotation));
-        
+
 
     }
     //public IEnumerator moveObject(Vector3 Origin, Vector3 Destination, Quaternion Rotation)
@@ -196,5 +203,16 @@ public class Driver : MonoBehaviour
     private void OnTriggerExit(Collider other)
     {
         collided = false;
+        if (other.gameObject.tag == "Enemy" && onDrift)
+        {
+            StartCoroutine(Explosion(other.gameObject));
+        }
+    }
+    public IEnumerator Explosion(GameObject go)
+    {
+        go.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
+        go.GetComponentInChildren<ParticleSystem>().Play();
+        yield return new WaitForSeconds(5f);
+        go.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
     }
 }
